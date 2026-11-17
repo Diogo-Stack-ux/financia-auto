@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function owns(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    match /users/{uid} {
+      allow read, delete: if owns(uid);
+      allow create, update: if owns(uid)
+        && request.resource.data.keys().hasOnly(['name', 'email', 'createdAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 60;
+      match /simulations/{simulationId} {
+        allow read, delete: if owns(uid);
+        allow create, update: if owns(uid)
+          && request.resource.data.keys().hasOnly([
+            'id', 'createdAt', 'salary', 'vehiclePrice', 'downPayment',
+            'year', 'condition', 'months', 'monthlyRate', 'bank', 'ratePeriod'
+          ])
+          && request.resource.data.id == simulationId
+          && request.resource.data.createdAt is string
+          && request.resource.data.salary is number && request.resource.data.salary > 0
+          && request.resource.data.vehiclePrice is number && request.resource.data.vehiclePrice > 0
+          && request.resource.data.downPayment is number && request.resource.data.downPayment >= 0
+          && request.resource.data.downPayment < request.resource.data.vehiclePrice
+          && request.resource.data.year is int
+          && request.resource.data.condition in ['newCar', 'nearlyNew', 'used']
+          && request.resource.data.months in [12, 24, 36, 48, 60, 72]
+          && request.resource.data.monthlyRate is number && request.resource.data.monthlyRate >= 0
+          && request.resource.data.bank is string
+          && request.resource.data.ratePeriod is string;
+      }
+    }
+  }
+}
